@@ -20,7 +20,7 @@ pipeline {
         TASK_DEF_FILE = 'task-definition.json'
         
         // S3 버킷 설정
-        ARTIFACT_BUCKET = 'daegok-codepipeline-s3'
+        ARTIFACT_BUCKET = 'daegok-codepipeline-s3-test1239'
         S3_PREFIX = 'Daegok-Petclinic-Artifacts'
         ZIP_ARTIFACT_NAME = 'artifact.zip'
         
@@ -649,3 +649,4 @@ Resources:
         }
     }
 }
+
