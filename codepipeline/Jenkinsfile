@@ -91,7 +91,7 @@ pipeline {
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        // Promethues 통합 중 수정
+        `` Promethues 통합 중 수정
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
@@ -461,7 +461,7 @@ pipeline {
 </project>
 EOF
 '''
-// 4. application.properties 파일 생성 (Prometheus 통합 설정)
+`` application.properties 파일 생성 (Prometheus 통합 설정)
 sh '''
                     mkdir -p src/main/resources
                     cat > src/main/resources/application.properties <<'EOF'
@@ -663,6 +663,7 @@ Resources:
         }
     }
 }
+
 
 
 
