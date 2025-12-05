@@ -573,6 +573,12 @@ EOF
             }
         }
 
+        stage('Install jq') {
+            steps {
+                sh 'sudo apt-get update && sudo apt-get install -y jq'
+            }
+        }
+
         stage('Tag and Push Image to ECR & Upload Artifacts') {
             steps {
                 script {
@@ -663,8 +669,3 @@ Resources:
         }
     }
 }
-
-
-
-
-
