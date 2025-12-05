@@ -91,12 +91,10 @@ pipeline {
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        `` Promethues 통합 중 수정
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
-        //
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
@@ -298,37 +296,19 @@ pipeline {
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <compilerArgs>
-                                <arg>-XDcompilePolicy=simple</arg>
-                                <arg>--should-stop=ifError=FLOW</arg>
-                                <arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:CustomContractAnnotations=org.springframework.lang.Contract -XepOpt:NullAway:JSpecifyMode=true</arg>
-                            </compilerArgs>
-                            <annotationProcessorPaths>
-                                <path>
-                                    <groupId>com.google.errorprone</groupId>
-                                    <artifactId>error_prone_core</artifactId>
-                                    <version>${error-prone.version}</version>
-                                </path>
-                                <path>
-                                    <groupId>com.uber.nullaway</groupId>
-                                    <artifactId>nullaway</artifactId>
-                                    <version>${nullaway.version}</version>
-                                </path>
-                            </annotationProcessorPaths>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <executions>
+        <execution>
+            <id>default-compile</id>
+            <phase>compile</phase>
+            <goals>
+                <goal>compile</goal>
+            </goals>
+            
+            </execution>
+    </executions>
+</plugin>
             <plugin>
                 <?m2e ignore?>
                 <groupId>org.cyclonedx</groupId>
@@ -461,11 +441,11 @@ pipeline {
 </project>
 EOF
 '''
-`` application.properties 파일 생성 (Prometheus 통합 설정)
+
 sh '''
-                    mkdir -p src/main/resources
-                    cat > src/main/resources/application.properties <<'EOF'
-// Actuator의 Prometheus 엔드포인트를 노출하도록 설정
+mkdir -p src/main/resources
+cat > src/main/resources/application.properties <<'EOF'
+
 management.endpoints.web.exposure.include=health,info,prometheus
 EOF
         '''
@@ -482,6 +462,7 @@ RUN mvn clean package -DskipTests -Dmaven.test.skip=true
 
 FROM eclipse-temurin:21-jdk
 WORKDIR /app
+RUN apt-get update && apt-get install -y jq
 COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
@@ -572,12 +553,6 @@ EOF
                 sh 'cat /etc/os-release'
             }
         }
-
-        stage('Install jq') {
-            steps {
-                sh 'sudo apt-get update && sudo apt-get install -y jq'
-            }
-        }
 
         stage('Tag and Push Image to ECR & Upload Artifacts') {
             steps {
