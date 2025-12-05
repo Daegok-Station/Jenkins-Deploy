@@ -460,7 +460,7 @@ pipeline {
     </profiles>
 </project>
 EOF
-                    '''
+'''
 // 4. application.properties 파일 생성 (Prometheus 통합 설정)
 sh '''
                     mkdir -p src/main/resources
@@ -663,6 +663,7 @@ Resources:
         }
     }
 }
+
 
 
 
