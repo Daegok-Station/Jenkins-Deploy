@@ -482,7 +482,7 @@ EOF
         "environment": [],
         "environmentFiles": [],
         "essential": true,
-        "image": "placeholder-image-uri:latest",
+        "image": "${FULL_IMAGE_URI}",
         "logConfiguration": {
             "logDriver": "awslogs",
             "options": {
@@ -554,6 +554,7 @@ EOF
             }
         }
 
+
         stage('Tag and Push Image to ECR & Upload Artifacts') {
             steps {
                 script {
@@ -584,14 +585,19 @@ EOF
                     echo '[{"name":"${CONTAINER_NAME}","imageUri":"${FULL_IMAGE_URI}"}]' > imagedefinitions.json
                     """
 
-                    // 2. Task Definition 파일 정리
-                    sh """
-                    echo "Cleaning up task-definition.json..."
-                    cat ${TASK_DEF_FILE} | \\
-                    jq 'del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.registeredAt) | del(.registeredBy) | del(.requiresAttributes) | del(.compatibilities) | del(.tags) | del(.enableFaultInjection)' > ${TASK_DEF_FILE}_CLEAN
+                    // 2. Task Definition 파일 정리 (Docker 컨테이너에서 jq 실행)
+sh """
+echo "Cleaning up task-definition.json using Docker jq..."
 
-                    mv ${TASK_DEF_FILE}_CLEAN ${TASK_DEF_FILE}
-                    """
+docker run --rm \
+  -v \$PWD:/workspace \
+  -w /workspace \
+  eclipse-temurin:21-jdk \
+  sh -c "apt-get update && apt-get install -y jq && jq 'del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.registeredAt) | del(.registeredBy) | del(.requiresAttributes) | del(.compatibilities) | del(.tags) | del(.enableFaultInjection)' ${TASK_DEF_FILE} > ${TASK_DEF_FILE}_CLEAN"
+
+mv ${TASK_DEF_FILE}_CLEAN ${TASK_DEF_FILE}
+"""
+
                     
                     // 3. AppSpec YAML 파일 생성
                     def appSpecContent = """
