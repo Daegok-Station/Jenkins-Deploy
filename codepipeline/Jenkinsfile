@@ -296,19 +296,19 @@ pipeline {
                 </configuration>
             </plugin>
             <plugin>
-    <groupId>org.apache.maven.plugins</groupId>
-    <artifactId>maven-compiler-plugin</artifactId>
-    <executions>
-        <execution>
-            <id>default-compile</id>
-            <phase>compile</phase>
-            <goals>
-                <goal>compile</goal>
-            </goals>
-            
-            </execution>
-    </executions>
-</plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        
+                        </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <?m2e ignore?>
                 <groupId>org.cyclonedx</groupId>
@@ -442,13 +442,13 @@ pipeline {
 EOF
 '''
 
-sh '''
+                    sh '''
 mkdir -p src/main/resources
 cat > src/main/resources/application.properties <<'EOF'
 
 management.endpoints.web.exposure.include=health,info,prometheus
 EOF
-        '''
+                    '''
 
                     // 2. Dockerfile 생성
                     sh '''
@@ -559,15 +559,6 @@ EOF
             steps {
                 script {
                     
-                    // zip 설치 명령어는 dnf고 sudo고 안되서 전전긍긍했는데
-                    // docker exec -it -u root 3a75902216a4 /bin/bash
-                    // 사실 컨테이너에 루트 권한으로 접근해서 zip을 설치해야했는데
-                    // EC2 내부에만 zip을 설치해서 안되는거엿슨
-                    sh 'echo "Installing zip utility in Agent environment (if not already installed)..."'
-                    //sh 'apt-get update && apt-get install -y zip' 
-                    sh 'echo "zip utility installed/checked. Starting artifact process."'
-                    // ----------------------------------------------------
-
                     sh 'echo "Tagging and pushing image to ECR"'
                     sh 'docker tag $IMAGE_TAG $FULL_IMAGE_URI'
                     sh 'docker push $FULL_IMAGE_URI'
@@ -584,20 +575,15 @@ EOF
                     sh """
                     echo '[{"name":"${CONTAINER_NAME}","imageUri":"${FULL_IMAGE_URI}"}]' > imagedefinitions.json
                     """
+                    
+                    // 2. Task Definition 파일 정리 (jq 사용)
+                    sh """
+                    echo "Cleaning up task-definition.json..."
+                    cat ${TASK_DEF_FILE} | \\
+                    jq 'del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.registeredAt) | del(.registeredBy) | del(.requiresAttributes) | del(.compatibilities) | del(.tags) | del(.enableFaultInjection)' > ${TASK_DEF_FILE}_CLEAN
 
-                    // 2. Task Definition 파일 정리 (Docker 컨테이너에서 jq 실행)
-sh """
-echo "Cleaning up task-definition.json using Docker jq..."
-
-docker run --rm \
-  -v \$PWD:/workspace \
-  -w /workspace \
-  eclipse-temurin:21-jdk \
-  sh -c "apt-get update && apt-get install -y jq && jq 'del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.registeredAt) | del(.registeredBy) | del(.requiresAttributes) | del(.compatibilities) | del(.tags) | del(.enableFaultInjection)' ${TASK_DEF_FILE} > ${TASK_DEF_FILE}_CLEAN"
-
-mv ${TASK_DEF_FILE}_CLEAN ${TASK_DEF_FILE}
-"""
-
+                    mv ${TASK_DEF_FILE}_CLEAN ${TASK_DEF_FILE}
+                    """
                     
                     // 3. AppSpec YAML 파일 생성
                     def appSpecContent = """
@@ -614,8 +600,8 @@ Resources:
 """
                     writeFile file: 'appspec.yml', text: appSpecContent
                     
-                    // ZIP 압축 실행
-                     echo "Zipping deployment artifacts into ${ZIP_ARTIFACT_NAME}"
+                    // ZIP 압축 실행 (zip 사용)
+                    echo "Zipping deployment artifacts into ${ZIP_ARTIFACT_NAME}"
                     sh "ls -al"
                     sh "zip ${ZIP_ARTIFACT_NAME} appspec.yml imageDetail.json imagedefinitions.json ${TASK_DEF_FILE}"
                     
@@ -630,7 +616,6 @@ Resources:
                     // 4. AWS CodePipeline 실행 요청 추가
                     // ----------------------------------------------------------------------------------
                     echo "--- Triggering AWS CodePipeline: ${CODEPIPELINE_NAME} ---"
-                    // Jenkins 에이전트의 IAM 역할에 codepipeline:StartPipelineExecution 권한 필요
                     sh "aws codepipeline start-pipeline-execution --name ${CODEPIPELINE_NAME}"
                     echo "CodePipeline ${CODEPIPELINE_NAME} execution started successfully."
                     // ----------------------------------------------------------------------------------
@@ -641,12 +626,12 @@ Resources:
 
     post {
         success {
-            echo ' Docker Image Build 및 AWS ECR Push, CD 아티팩트 ZIP 파일 S3 업로드, CodePipeline 실행 요청이 성공적으로 완료되었습니다.'
+            echo 'Docker Image Build 및 AWS ECR Push, CD 아티팩트 ZIP 파일 S3 업로드, CodePipeline 실행 요청이 성공적으로 완료되었습니다.'
             echo " S3 아티팩트 경로: s3://${env.ARTIFACT_BUCKET}/${env.S3_PREFIX}/${env.ZIP_ARTIFACT_NAME}"
             echo " CodePipeline 이름: ${env.CODEPIPELINE_NAME}"
         }
         failure {
-            echo ' 오류 발생. 빌드, ECR 푸시, S3 업로드, 또는 CodePipeline 요청 단계에서 문제가 발생했습니다. 로그를 확인하세요.'
+            echo '오류 발생. 빌드, ECR 푸시, S3 업로드, 또는 CodePipeline 요청 단계에서 문제가 발생했습니다. 로그를 확인하세요.'
         }
     }
 }
